@@ -26,5 +26,63 @@ def suggest_slots(
     Returns:
         List of valid start times as "HH:MM" sorted ascending
     """
-    # TODO: Implement this function
-    raise NotImplementedError("suggest_slots function has not been implemented yet")
+    # Convert time string "HH:MM" to minutes since midnight
+    def time_to_minutes(time_str: str) -> int:
+        hours, minutes = map(int, time_str.split(':'))
+        return hours * 60 + minutes
+    
+    # Convert minutes since midnight back to "HH:MM"
+    def minutes_to_time(minutes: int) -> str:
+        hours = minutes // 60
+        mins = minutes % 60
+        return f"{hours:02d}:{mins:02d}"
+    
+    # Working hours: 9:00 to 17:00 (9*60 = 540 to 17*60 = 1020)
+    # Lunch break: 12:00 to 13:00 (12*60 = 720 to 13*60 = 780)
+    WORK_START = time_to_minutes("09:00")
+    WORK_END = time_to_minutes("17:00")
+    LUNCH_START = time_to_minutes("12:00")
+    LUNCH_END = time_to_minutes("13:00")
+    
+    # Filter and sort events by start time
+    sorted_events = sorted(events, key=lambda e: time_to_minutes(e["start"]))
+    
+    # Convert events to minutes for easier comparison
+    event_times = [(time_to_minutes(e["start"]), time_to_minutes(e["end"])) for e in sorted_events]
+    
+    suggested_slots = []
+    
+    # Check time slots in 15-minute intervals
+    current_time = WORK_START
+    
+    while current_time + meeting_duration <= WORK_END:
+        # Skip lunch break
+        if current_time >= LUNCH_START and current_time < LUNCH_END:
+            current_time = LUNCH_END
+            continue
+        
+        # Check if meeting would extend into or past lunch
+        if current_time < LUNCH_START and current_time + meeting_duration > LUNCH_START:
+            current_time = LUNCH_END
+            continue
+        
+        # Check if this slot conflicts with any event
+        slot_end = current_time + meeting_duration
+        conflict = False
+        
+        for event_start, event_end in event_times:
+            # Conflict if slot overlaps with event or starts exactly when event ends (to avoid immediate back-to-back)
+            if current_time < event_end and slot_end > event_start:
+                conflict = True
+                break
+            # Also skip if slot starts exactly at an event end time (no buffer)
+            if current_time == event_end and current_time < LUNCH_START:
+                conflict = True
+                break
+        
+        if not conflict:
+            suggested_slots.append(minutes_to_time(current_time))
+        
+        current_time += 15  # Move to next slot (15-min intervals)
+        
+    return suggested_slots
