@@ -175,4 +175,53 @@ def test_single_slot_at_three_pm_two_hour_meeting():
     assert "14:00" not in slots  # Back-to-back prevention
     assert "14:30" not in slots  # Insufficient gap before end of day
 
+# New tests for Friday cutoff feature (no meeting starts after 15:00 on Fridays)
+
+def test_friday_slot_at_16_not_returned():
+    """
+    Friday case: a meeting at 16:00 should not be suggested because starts after 15:00 are disallowed on Fridays.
+    """
+    events = []  # no other events
+    slots = suggest_slots(events, meeting_duration=30, day="Fri")
+    assert "16:00" not in slots
+    assert "15:00" in slots  # 15:00 is allowed
+
+def test_friday_slot_at_exactly_15_allowed():
+    """
+    Friday case: start exactly at 15:00 should be valid.
+    """
+    events = []  # no other events
+    slots = suggest_slots(events, meeting_duration=30, day="Fri")
+    assert "15:00" in slots
+    assert "15:15" not in slots
+
+def test_friday_two_hour_meeting_starting_at_15_allowed():
+    """
+    Friday case: a 2-hour meeting starting at 15:00 (ending at 17:00) should be allowed.
+    """
+    events = [
+        {"start": "09:00", "end": "12:00"},
+        {"start": "13:00", "end": "15:00"},
+    ]
+    slots = suggest_slots(events, meeting_duration=120, day="Fri")
+    assert len(slots) == 1
+    assert slots[0] == "15:00"
+
+def test_friday_event_at_15_blocks_slot():
+    """
+    Friday case: if an event occupies 15:00-16:00, 15:00 should not be suggested even though it's allowed by cutoff.
+    """
+    events = [{"start": "15:00", "end": "16:00"}]
+    slots = suggest_slots(events, meeting_duration=30, day="Fri")
+    assert "15:00" not in slots
+
+def test_friday_day_string_case_insensitive_and_whitespace():
+    """
+    Friday case: day detection should be case-insensitive and tolerate surrounding whitespace.
+    """
+    events = []
+    slots = suggest_slots(events, meeting_duration=30, day=" FRI ")
+    assert "15:00" in slots
+    assert "15:15" not in slots
+
 """TODO: Add at least 5 additional test cases to test your implementation."""

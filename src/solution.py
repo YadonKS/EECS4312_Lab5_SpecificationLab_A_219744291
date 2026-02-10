@@ -1,5 +1,5 @@
-## Student Name:
-## Student ID: 
+## Student Name: YAdon Kassahun 
+## Student ID: 219744291
 
 """
 Stub file for the meeting slot suggestion exercise.
@@ -43,6 +43,8 @@ def suggest_slots(
     WORK_END = time_to_minutes("17:00")
     LUNCH_START = time_to_minutes("12:00")
     LUNCH_END = time_to_minutes("13:00")
+    # Friday cutoff: meetings should not start after 15:00 on Fridays
+    FRIDAY_CUTOFF = time_to_minutes("15:00")
     
     # Filter and sort events by start time
     sorted_events = sorted(events, key=lambda e: time_to_minutes(e["start"]))
@@ -66,12 +68,17 @@ def suggest_slots(
             current_time = LUNCH_END
             continue
         
+        # If Friday, skip slots that start after 15:00 (slots that start exactly at 15:00 are allowed)
+        if isinstance(day, str) and day.strip().lower() == "fri" and current_time > FRIDAY_CUTOFF:
+            current_time += 15
+            continue
+        
         # Check if this slot conflicts with any event
         slot_end = current_time + meeting_duration
         conflict = False
         
         for event_start, event_end in event_times:
-            # Conflict if slot overlaps with event or starts exactly when event ends (to avoid immediate back-to-back)
+            # Conflict if slot overlaps with event
             if current_time < event_end and slot_end > event_start:
                 conflict = True
                 break
